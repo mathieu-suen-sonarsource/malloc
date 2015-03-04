@@ -141,7 +141,7 @@ int mm_init(void)
   Block *p = mem_sbrk(BlockSize);
   p->prev = NULL;
   p->next = NULL;
-  p->size = 0;
+  p->size = 1;
   
   if ((heapListPtr = mem_sbrk(4*WSIZE)) == NULL)
     return -1;
@@ -188,12 +188,23 @@ void *mm_malloc(size_t size)
         return NULL;
       else {
 	//extend size of heap 
+	//possibly change p->size to allocated 1
 	extendsize = MAX(asize, CHUNKSIZE);
       }
+
       p = extend_heap(extendsize); //enlarge heap (allocate more memory)
+      //TODO: remove p from free list (like bellow)
+      //set state to allocated!
       placeMemory(p, asize); //after extending the heap we wanna allocate that memory
     }else {
       //if it returns a pointer we wanna allocate that memory here
+
+      //todo: move this into remove function!
+      p->size |= 1; //mark as allocated!
+      p->next->prev = p->prev; //remove the block from free list
+      p->prev->next = p->next;
+      //
+
       placeMemory(p, asize); 
     }
     return p;
@@ -207,11 +218,13 @@ void *fit_Block(size_t size){
   //       ^
   //returns the pointer to available block if none available then return null
   Block *p;
-  for(p = ((Block *)mem_heap_lo())->next;p != mem_heap_lo() && p->size < size;p = p->next);
-  if(p != mem_heap_lo())
+  for(p = ((Block *)mem_heap_lo())->next; p != mem_heap_lo() && p->size < size; p = p->next);
+  if(p != mem_heap_lo()){
     return p;
-  else
+  }
+  else{
     return NULL;
+  }
 }
 
 static void placeMemory(void *p, size_t asize){
