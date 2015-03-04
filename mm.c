@@ -1,5 +1,5 @@
 /*
- * mm-naive.c - The fastest, least memory-efficient malloc package.
+ *
  * 
  * This project will address malloclab with explicit free lists implentation.
  * Initially:
