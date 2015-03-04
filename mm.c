@@ -119,26 +119,29 @@ team_t team = {
 #define NEXT_BLKP(bp)  ((char *)(bp) + GET_SIZE(((char *)(bp) - WSIZE)))
 #define PREV_BLKP(bp)  ((char *)(bp) - GET_SIZE(((char *)(bp) - DSIZE)))
 /* $end mallocmacros */
-#define BlockSize Align(sizeof(Block))
-typedef struct Block Block;
+#define BlockSize ALIGN(sizeof(BlockHeader))
+
+typedef struct Block BlockHeader;
 
 struct Block{
   size_t size;
-  struct Block* next;
-  struct Block* prev;
+  BlockHeader* next;
+  BlockHeader* prev;
 };
 
 static char *freeListRoot; // points to the root of the freeList 
 static char *heapListPtr; //points to the first block
 
+
 void *fit_Block(size_t size);
 static void placeMemory(void *p, size_t asize);
+static void *extend_heap(size_t words);
 /* 
  * mm_init - initialize the malloc package.
  */
 int mm_init(void)
 { 
-  Block *p = mem_sbrk(BlockSize);
+  BlockHeader *p = mem_sbrk(BlockSize);
   p->prev = NULL;
   p->next = NULL;
   p->size = 1;
@@ -146,8 +149,8 @@ int mm_init(void)
   if ((heapListPtr = mem_sbrk(4*WSIZE)) == NULL)
     return -1;
   PUT(heapListPtr, 0);                        /* alignment padding */
-  PUT(heapListPtr+WSIZE, PACK(OVERHEAD, 1));  /* prologue header */
-  PUT(heapListPtr+DSIZE, PACK(OVERHEAD, 1));  /* prologue footer */
+  PUT(heapListPtr+WSIZE, PACK(DSIZE * 2, 1));  /* prologue header */
+  PUT(heapListPtr+DSIZE, PACK(DSIZE * 2, 1));  /* prologue footer */
   PUT(heapListPtr+WSIZE+DSIZE, PACK(0, 1));   /* epilogue header */
   heapListPtr += DSIZE;
   freeListRoot = NULL;
@@ -181,7 +184,7 @@ void *mm_malloc(size_t size)
       extend_heap(extendsize);
     }
 
-   void *p = fit_Block(asize);//return a pointer to available block 
+   BlockHeader *p = fit_Block(asize);//return a pointer to available block 
     
     if(p == NULL){  //if there is no available block of size "asize" 
       if (p == (void *)-1)
@@ -207,7 +210,7 @@ void *mm_malloc(size_t size)
 
       placeMemory(p, asize); 
     }
-    return p;
+    return (void *)p;
 }
 
 void *fit_Block(size_t size){
@@ -217,8 +220,8 @@ void *fit_Block(size_t size){
   // ++++++++++++++++++++++++++
   //       ^
   //returns the pointer to available block if none available then return null
-  Block *p;
-  for(p = ((Block *)mem_heap_lo())->next; p != mem_heap_lo() && p->size < size; p = p->next);
+  BlockHeader *p;
+  for(p = ((BlockHeader *)mem_heap_lo())->next; p != mem_heap_lo() && p->size < size; p = p->next);
   if(p != mem_heap_lo()){
     return p;
   }
