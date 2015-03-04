@@ -1,6 +1,7 @@
 /*
- * This project will address malloclab with explicit free lists implentation.
+ * mm-naive.c - The fastest, least memory-efficient malloc package.
  * 
+ * This project will address malloclab with explicit free lists implentation.
  * Initially:
  * In our init function we initilize the heap by creating the epilouge header
  * which marks the end of the heap. In addition, we create prologue header 
@@ -39,8 +40,7 @@
  * which we want to avoid at all cost, beacuse they would create a infinite loop. Finally we want
  * to count number of free blocks on the heap and compare it to number of blocks in our Explicit
  * free list, in order to be aware of the possible unutilized memory.     
- *
- * 
+ *  
  *
  */
 #include <stdio.h>
@@ -117,6 +117,7 @@ team_t team = {
 #define NEXT_BLKP(bp)  ((char *)(bp) + GET_SIZE(((char *)(bp) - WSIZE)))
 #define PREV_BLKP(bp)  ((char *)(bp) - GET_SIZE(((char *)(bp) - DSIZE)))
 /* $end mallocmacros */
+#define BlockSize Align(sizeof(Block))
 typedef struct Block Block;
 
 struct Block{
@@ -128,22 +129,27 @@ struct Block{
 static char *freeListRoot; // points to the root of the freeList 
 static char *heapListPtr; //points to the first block
 
-void *findBlock(size_t size);
+void *fit_Block(size_t size);
 static void placeMemory(void *p, size_t asize);
 /* 
  * mm_init - initialize the malloc package.
  */
 int mm_init(void)
 { 
+  Block *p = mem_sbrk(BlockSize);
+  p->prev = NULL;
+  p->next = NULL;
+  p->size = 0;
   
-  if ((heap_listp = mem_sbrk(4*WSIZE)) == NULL)
+  if ((heapListPtr = mem_sbrk(4*WSIZE)) == NULL)
     return -1;
   PUT(heapListPtr, 0);                        /* alignment padding */
   PUT(heapListPtr+WSIZE, PACK(OVERHEAD, 1));  /* prologue header */
   PUT(heapListPtr+DSIZE, PACK(OVERHEAD, 1));  /* prologue footer */
   PUT(heapListPtr+WSIZE+DSIZE, PACK(0, 1));   /* epilogue header */
   heapListPtr += DSIZE;
-  
+  freeListRoot = NULL;
+
   return 0;
 } 
 
@@ -152,33 +158,37 @@ int mm_init(void)
  *     Always allocate a block whose size is a multiple of the alignment.
  */
 void *mm_malloc(size_t size)
-{ //Got some base code from the book, chapter 9
-   
+{ //Got some base code from the book, chapter 9   
     size_t asize;      /* adjusted block size */
     size_t extendsize; /* amount to extend heap if no fit */   
 
     /* Ignore spurious requests */ 
-    if (size <= 0){
+    if (size == 0){
       return NULL;
     }
 
     /* Adjust block size to include overhead and alignment reqs. */
-    if (size <= DSIZE)
+    if (size <= DSIZE){
       asize = DSIZE * 2;
-    else
+    } else{
       asize = DSIZE * ((size + (DSIZE) + (DSIZE-1)) / DSIZE);
+    }
+     
+    if(freeListRoot == NULL){ //if freeList contains no free blocks we want to expand heap
+      extendsize = MAX(asize, CHUNKSIZE);
+      extend_heap(extendsize);
+    }
 
-
-    void *p = findBlock(asize);//return a pointer to available block 
+   void *p = fit_Block(asize);//return a pointer to available block 
     
     if(p == NULL){  //if there is no available block of size "asize" 
       if (p == (void *)-1)
         return NULL;
       else {
 	//extend size of heap 
-	extendsize = MAX(asize,CHUNKSIZE);
+	extendsize = MAX(asize, CHUNKSIZE);
       }
-      p = mem_sbrk(extendsize); //enlarge heap (allocate more memory)
+      p = extend_heap(extendsize); //enlarge heap (allocate more memory)
       placeMemory(p, asize); //after extending the heap we wanna allocate that memory
     }else {
       //if it returns a pointer we wanna allocate that memory here
@@ -187,7 +197,9 @@ void *mm_malloc(size_t size)
     return p;
 }
 
-void *findBlock(size_t size){
+void *fit_Block(size_t size){
+
+  
   // Looking for space of size 8
   // ++++++++++++++++++++++++++
   // |XXXXX|       |XX|XXXX|  |
@@ -202,7 +214,7 @@ static void placeMemory(void *p, size_t asize){
   
   //TODO place memory
   //Taken from book, chapter 9, page 856-857
-  /* size_t csize = GET_SIZE(HDRP(p));
+  size_t csize = GET_SIZE(HDRP(p));
 
   if ((csize - asize) >= (DSIZE*2)) {
     PUT(HDRP(p), PACK(asize, 1));
@@ -214,9 +226,31 @@ static void placeMemory(void *p, size_t asize){
   else {
     PUT(HDRP(p), PACK(csize, 1));
     PUT(FTRP(p), PACK(csize, 1));
-  }*/
+  }
 
 } 
+
+
+static void *extend_heap(size_t words){
+
+  char *bp;
+  size_t size;
+
+  /* Allocate an even number of words to maintain alignment */
+  size = (words % 2) ? (words+1) * WSIZE : words * WSIZE;
+  if ((bp = mem_sbrk(size)) == (void *)-1)
+    return NULL;
+
+  /* Initialize free block header/footer and the epilogue header */
+  PUT(HDRP(bp), PACK(size, 0));         /* free block header */
+  PUT(FTRP(bp), PACK(size, 0));         /* free block footer */
+  PUT(HDRP(NEXT_BLKP(bp)), PACK(0, 1)); /* new epilogue header */
+
+  /* Coalesce if the previous block was free */
+  /*CHECKOUT Coalesce to merge neighbor blocks */
+  return bp;
+
+}
 
 
 /*
