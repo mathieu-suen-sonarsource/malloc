@@ -22,7 +22,7 @@
  * and next pointer to null, as there are no other free blocks in that list. 
  * Finally we want to set the root pointing to the new first free block. 
  * Note: as we are adding/freeing more blocks we will be linking them together via prev and next pointers.
- *
+ * 
  * Realloc:
  * Realloc will take a pointer to the beginning to the block we want to allocate, as well as the new size.
  * In case we want to expande the block, first we will check neighbors(left and right blocks) and if left
@@ -30,7 +30,10 @@
  * is less then or equal to the new size we simply expand the block into the free neighbor.
  * Otherwise, we free the current block and iterate through our explicit free list and look for a space of
  * newsize, if no such space, expand heap.
- *
+ * In case we want to shrink the block, first we will check the neighbor block, if they are free, we will combine
+ * remaining space with left or right block. In case the left and right block are both allocated, we will iterate 
+ * through the free list and allocate the smallest block within the explicit free list
+ * 
  * Heap Checker:
  * In order to avoid possible errors in our malloc implentation we are going to create a heap checker.
  * In our heap checker implentation we are going to check if our Explicit free list is linked in a 
