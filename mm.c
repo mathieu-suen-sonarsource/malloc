@@ -1,7 +1,6 @@
 /*
- * mm-naive.c - The fastest, least memory-efficient malloc package.
- * 
  * This project will address malloclab with explicit free lists implentation.
+ * 
  * Initially:
  * In our init function we initilize the heap by creating the epilouge header
  * which marks the end of the heap. In addition, we create prologue header 
