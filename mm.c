@@ -1,5 +1,4 @@
 /*
- * mm-naive.c - The fastest, least memory-efficient malloc package.
  * 
  * This project will address malloclab with explicit free lists implentation.
  * Initially:
@@ -121,7 +120,7 @@ team_t team = {
 typedef struct Block Block;
 
 struct Block{
-  int size;
+  size_t size;
   struct Block* next;
   struct Block* prev;
 };
@@ -198,16 +197,18 @@ void *mm_malloc(size_t size)
 }
 
 void *fit_Block(size_t size){
-
-  
   // Looking for space of size 8
   // ++++++++++++++++++++++++++
   // |XXXXX|       |XX|XXXX|  |
   // ++++++++++++++++++++++++++
   //       ^
   //returns the pointer to available block if none available then return null
-  //TODO implement findblock; iterate through the heap and see if there is continuous chunk of space of size "size" available
-  return NULL;
+  Block *p;
+  for(p = ((Block *)mem_heap_lo())->next;p != mem_heap_lo() && p->size < size;p = p->next);
+  if(p != mem_heap_lo())
+    return p;
+  else
+    return NULL;
 }
 
 static void placeMemory(void *p, size_t asize){
