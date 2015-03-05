@@ -119,7 +119,8 @@ team_t team = {
 #define NEXT_BLKP(bp)  ((char *)(bp) + GET_SIZE(((char *)(bp) - WSIZE)))
 #define PREV_BLKP(bp)  ((char *)(bp) - GET_SIZE(((char *)(bp) - DSIZE)))
 /* $end mallocmacros */
-#define BlockSize ALIGN(sizeof(BlockHeader))
+#define BlockSize ALIGN(sizeof(BlockHeader) + WSIZE)
+// minnimum size of block (header, footer, next, prev) 
 
 #ifdef DEBUG
 #define CHECKHEAP(verbose) printf("%s\n", _func_); mm_checkheap(verbose);
@@ -289,6 +290,9 @@ static void *extend_heap(size_t words){
  */
 void mm_free(void *ptr)
 {
+
+
+  
   //TODO free block from given ptr
 }
 
