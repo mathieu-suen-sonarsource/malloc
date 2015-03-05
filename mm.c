@@ -121,12 +121,16 @@ team_t team = {
 /* $end mallocmacros */
 #define BlockSize ALIGN(sizeof(BlockHeader))
 
+#ifdef DEBUG
+#define CHECKHEAP(verbose) printf("%s\n", _func_); mm_checkheap(verbose);
+#endif
+
 typedef struct Block BlockHeader;
 
 struct Block{
   size_t size;
-  BlockHeader* next;
-  BlockHeader* prev;
+  BlockHeader *next;
+  BlockHeader *prev;
 };
 
 static char *freeListRoot; // points to the root of the freeList 
@@ -141,20 +145,22 @@ static void *extend_heap(size_t words);
  */
 int mm_init(void)
 { 
+  
   BlockHeader *p = mem_sbrk(BlockSize);
-  p->prev = NULL;
-  p->next = NULL;
   p->size = 1;
+  p->next = p;
+  p->prev = p;
   
   if ((heapListPtr = mem_sbrk(4*WSIZE)) == NULL)
     return -1;
-  PUT(heapListPtr, 0);                        /* alignment padding */
-  PUT(heapListPtr+WSIZE, PACK(DSIZE * 2, 1));  /* prologue header */
-  PUT(heapListPtr+DSIZE, PACK(DSIZE * 2, 1));  /* prologue footer */
-  PUT(heapListPtr+WSIZE+DSIZE, PACK(0, 1));   /* epilogue header */
+  PUT(heapListPtr, 0);                        // alignment padding 
+  PUT(heapListPtr+WSIZE, PACK(DSIZE, 1));  // prologue header 
+  PUT(heapListPtr+DSIZE, PACK(DSIZE, 1));  // prologue footer 
+  PUT(heapListPtr+WSIZE+DSIZE, PACK(0, 1));   // epilogue header 
+  
   heapListPtr += DSIZE;
   freeListRoot = NULL;
-
+  
   return 0;
 } 
 
@@ -164,9 +170,10 @@ int mm_init(void)
  */
 void *mm_malloc(size_t size)
 { //Got some base code from the book, chapter 9   
-    size_t asize;      /* adjusted block size */
-    size_t extendsize; /* amount to extend heap if no fit */   
-
+   size_t asize;      /* adjusted block size */
+   size_t extendsize; /* amount to extend heap if no fit */   
+   //   int newsize = ALIGN(BlockSize + size);
+   // printf("inside malloc");
     /* Ignore spurious requests */ 
     if (size == 0){
       return NULL;
@@ -177,40 +184,43 @@ void *mm_malloc(size_t size)
       asize = DSIZE * 2;
     } else{
       asize = DSIZE * ((size + (DSIZE) + (DSIZE-1)) / DSIZE);
-    }
-     
-    if(freeListRoot == NULL){ //if freeList contains no free blocks we want to expand heap
+      }
+
+    
+     if(freeListRoot == NULL){ //if freeList contains no free blocks we want to expand heap
       extendsize = MAX(asize, CHUNKSIZE);
       extend_heap(extendsize);
-    }
+      // mem_sbrk(extendsize);
+     }
 
    BlockHeader *p = fit_Block(asize);//return a pointer to available block 
     
     if(p == NULL){  //if there is no available block of size "asize" 
-      if (p == (void *)-1)
+      extendsize = MAX(asize, CHUNKSIZE);
+      p = extend_heap(extendsize);
+      //p = mem_sbrk(extendsize);
+      if (p == (void *)-1){
         return NULL;
-      else {
+      } else {
 	//extend size of heap 
 	//possibly change p->size to allocated 1
-	extendsize = MAX(asize, CHUNKSIZE);
       }
 
-      p = extend_heap(extendsize); //enlarge heap (allocate more memory)
       //TODO: remove p from free list (like bellow)
       //set state to allocated!
       placeMemory(p, asize); //after extending the heap we wanna allocate that memory
-    }else {
+    } else {
       //if it returns a pointer we wanna allocate that memory here
 
       //todo: move this into remove function!
       p->size |= 1; //mark as allocated!
       p->next->prev = p->prev; //remove the block from free list
       p->prev->next = p->next;
-      //
+     
 
       placeMemory(p, asize); 
     }
-    return (void *)p;
+    return (char *)p + BlockSize;
 }
 
 void *fit_Block(size_t size){
@@ -234,7 +244,7 @@ static void placeMemory(void *p, size_t asize){
   
   //TODO place memory
   //Taken from book, chapter 9, page 856-857
-  size_t csize = GET_SIZE(HDRP(p));
+    size_t csize = GET_SIZE(HDRP(p));
 
   if ((csize - asize) >= (DSIZE*2)) {
     PUT(HDRP(p), PACK(asize, 1));
@@ -246,30 +256,31 @@ static void placeMemory(void *p, size_t asize){
   else {
     PUT(HDRP(p), PACK(csize, 1));
     PUT(FTRP(p), PACK(csize, 1));
-  }
+    }
 
-} 
+}
 
 
 static void *extend_heap(size_t words){
 
-  char *bp;
+    char *bp;
   size_t size;
 
-  /* Allocate an even number of words to maintain alignment */
+  // Allocate an even number of words to maintain alignment 
   size = (words % 2) ? (words+1) * WSIZE : words * WSIZE;
   if ((bp = mem_sbrk(size)) == (void *)-1)
     return NULL;
 
-  /* Initialize free block header/footer and the epilogue header */
-  PUT(HDRP(bp), PACK(size, 0));         /* free block header */
-  PUT(FTRP(bp), PACK(size, 0));         /* free block footer */
-  PUT(HDRP(NEXT_BLKP(bp)), PACK(0, 1)); /* new epilogue header */
+  // Initialize free block header/footer and the epilogue header 
+  PUT(HDRP(bp), PACK(size, 0));         // free block header 
+  PUT(FTRP(bp), PACK(size, 0));         // free block footer 
+  PUT(HDRP(NEXT_BLKP(bp)), PACK(0, 1)); // new epilogue header 
 
-  /* Coalesce if the previous block was free */
-  /*CHECKOUT Coalesce to merge neighbor blocks */
+  // Coalesce if the previous block was free 
+  //CHECKOUT Coalesce to merge neighbor blocks 
   return bp;
-
+  
+  return NULL;
 }
 
 
@@ -287,5 +298,5 @@ void mm_free(void *ptr)
 void *mm_realloc(void *ptr, size_t size)
 {
   //TODO realloc
-     return NULL;
+  return NULL;
 }
