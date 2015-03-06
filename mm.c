@@ -134,7 +134,7 @@ struct Block{
   BlockHeader *prev;
 };
 
-static char *freeListRoot; // points to the root of the freeList
+static BlockHeader *freeListRoot; // points to the root of the freeList
 static char *heapListPtr; //points to the first block of heap
 
 
