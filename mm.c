@@ -204,31 +204,32 @@ void *mm_malloc(size_t size){
       placeMemory(p, asize); //after extending the heap we wanna allocate that memory
     } else {
       //if it returns a pointer we wanna allocate that memory here
-
-      //todo: move this into remove function!
       p->size_alloc |= 1; //mark as allocated!
-      
-      //remove the block from the free list
-      if (p->prev == NULL) {
-        // Now the head pointer points to the node after discard (could be NULL)
-        freeListRoot = p->next;
-        // If the head is not NULL, then make sure that its back link is set to NULL
-        if (freeListRoot != NULL) {
-	  freeListRoot->prev = NULL;
-        }
-      }
-      else {
-        // Make the node preceeding the discard node point forward to the node coming after discard
-        (p->prev)->next = p->next;
-        if (p->next != NULL) {
-	  // Make the node coming after discard point back to the node preceeding discard
-	  (p->next)->prev = p->prev;
-        }
-      }
-     
+
+      remove(p); //remove p from the list     
       placeMemory(p, asize); //now we can safely allocate the memory
     }
     return (char *)p + BlockSize;
+}
+
+void remove(BlockHeader* p){
+  //remove the block from the free list                                                                                    
+  if (p->prev == NULL) {
+    // Now the head pointer points to the node after discard (could be NULL)                                               
+    freeListRoot = p->next;
+    // If the head is not NULL, then make sure that its back link is set to NULL                                           
+    if (freeListRoot != NULL) {
+      freeListRoot->prev = NULL;
+    }
+  }
+  else {
+    // Make the node preceeding the discard node point forward to the node coming after discard                            
+    (p->prev)->next = p->next;
+    if (p->next != NULL) {
+      // Make the node coming after discard point back to the node preceeding discard                                      
+      (p->next)->prev = p->prev;
+    }
+  }
 }
 
 void *fit_Block(size_t size){
