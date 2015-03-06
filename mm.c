@@ -134,8 +134,9 @@ struct Block{
   BlockHeader *prev;
 };
 
-static BlockHeader *freeListRoot; // points to the root of the freeList
+static char *freeListRoot; // points to the root of the freeList
 static char *heapListPtr; //points to the first block of heap
+
 
 void *fit_Block(size_t size);
 static void placeMemory(void *p, size_t asize);
@@ -145,20 +146,22 @@ static void *extend_heap(size_t words);
  */
 int mm_init(void)
 {
+
   BlockHeader *p = mem_sbrk(BlockSize);
-  p->size_alloc = 1; //allocated!
+  p->size_alloc = 1;
   p->next = p;
   p->prev = p;
 
   if ((heapListPtr = mem_sbrk(4*WSIZE)) == NULL)
     return -1;
   PUT(heapListPtr, 0);                        // alignment padding
-  PUT(heapListPtr+WSIZE, PACK(DSIZE, 1));     // prologue header
-  PUT(heapListPtr+DSIZE, PACK(DSIZE, 1));     // prologue footer
+  PUT(heapListPtr+WSIZE, PACK(DSIZE, 1));  // prologue header
+  PUT(heapListPtr+DSIZE, PACK(DSIZE, 1));  // prologue footer
   PUT(heapListPtr+WSIZE+DSIZE, PACK(0, 1));   // epilogue header
 
-  heapListPtr += DSIZE; //do we need it?
+  heapListPtr += DSIZE;
   freeListRoot = NULL;
+
   return 0;
 }
 
@@ -166,10 +169,12 @@ int mm_init(void)
  * mm_malloc - Allocate a block by incrementing the brk pointer.
  *             Always allocate a block whose size is a multiple of the alignment.
  */
-void *mm_malloc(size_t size){ 
-   //Got some base code from the book, chapter 9
+void *mm_malloc(size_t size)
+{ //Got some base code from the book, chapter 9
    size_t asize;      /* adjusted block size */
    size_t extendsize; /* amount to extend heap if no fit */
+   // int newsize = ALIGN(BlockSize + size);
+   // printf("inside malloc");
 
     /* Ignore spurious requests */
     if (size == 0){
@@ -177,7 +182,11 @@ void *mm_malloc(size_t size){
     }
 
     /* Adjust block size to include overhead and alignment reqs. */
-    asize = ALIGN(BlockSize + size);
+    if (size <= DSIZE){
+      asize = DSIZE * 2;
+    } else{
+      asize = DSIZE * ((size + (DSIZE) + (DSIZE-1)) / DSIZE);
+      }
 
 
      if(freeListRoot == NULL){ //if freeList contains no free blocks we want to expand heap
@@ -207,26 +216,11 @@ void *mm_malloc(size_t size){
 
       //todo: move this into remove function!
       p->size_alloc |= 1; //mark as allocated!
-      
-      //remove the block from the free list
-      if (p->prev == NULL) {
-        // Now the head pointer points to the node after discard (could be NULL)
-        freeListRoot = p->next;
-        // If the head is not NULL, then make sure that its back link is set to NULL
-        if (freeListRoot != NULL) {
-	  freeListRoot->prev = NULL;
-        }
-      }
-      else {
-        // Make the node preceeding the discard node point forward to the node coming after discard
-        (p->prev)->next = p->next;
-        if (p->next != NULL) {
-	  // Make the node coming after discard point back to the node preceeding discard
-	  (p->next)->prev = p->prev;
-        }
-      }
-     
-      placeMemory(p, asize); //now we can safely allocate the memory
+      p->next->prev = p->prev; //remove the block from free list
+      p->prev->next = p->next;
+
+
+      placeMemory(p, asize);
     }
     return (char *)p + BlockSize;
 }
@@ -249,8 +243,10 @@ void *fit_Block(size_t size){
 }
 
 static void placeMemory(void *p, size_t asize){
+
+  //TODO place memory
   //Taken from book, chapter 9, page 856-857
-  size_t csize = GET_SIZE(HDRP(p));
+    size_t csize = GET_SIZE(HDRP(p));
 
   if ((csize - asize) >= (DSIZE*2)) {
     PUT(HDRP(p), PACK(asize, 1));
@@ -295,10 +291,17 @@ static void *extend_heap(size_t words){
  */
 void mm_free(void *ptr)
 {
-  
+  size_t sizeOfBlock = GET_SIZE(HDRP(ptr));
+
+  PUT(HDRP(ptr), PACK(sizeOfBlock, 0));
+  PUT(FTRP(ptr), PACK(sizeOfBlock, 0));
 
   
-  //TODO free block from given ptr
+  BlockHeader *freeBlock = freeListRoot;
+  
+  
+
+
 }
 
 /*
