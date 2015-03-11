@@ -83,8 +83,31 @@ team_t team = {
     ""
 };
 
-/* single word (4) or double word (8) alignment */
-#define ALIGNMENT 8
+/* Basic constants and macros */
+#define WSIZE       4       /* word size (bytes) */  
+#define DSIZE       8       /* doubleword size (bytes) */
+#define CHUNKSIZE  (1<<12)  /* initial heap size (bytes) */
+#define OVERHEAD    8       /* overhead of header and footer (bytes) */
+#define ALIGNMENT 8 /* single word (4) or double word (8) alignment */
+
+#define MAX(x, y) ((x) > (y)? (x) : (y))  
+/* Pack a size and allocated bit into a word */
+#define PACK(size, alloc)  ((size) | (alloc))
+/* Read and write a word at address p */
+#define GET(p)       (*(size_t *)(p))
+#define PUT(p, val)  (*(size_t *)(p) = (val))
+  
+/* (which is about 54/100).* Read the size and allocated fields from address p */
+#define GET_SIZE(p)  (GET(p) & ~0x7) /* <<<<<<<<<<<<<<<<<<<<<<< update code */
+#define GET_ALLOC(p) (GET(p) & 0x1)  /* <<<<<<<<<<<<<<<<<<<<<<< update code */
+
+/* Given block ptr bp, compute address of its header and footer */
+#define HDRP(bp)       ((char *)(bp) - WSIZE)  
+#define FTRP(bp)       ((char *)(bp) + GET_SIZE(HDRP(bp)) - DSIZE)
+
+/* Given block ptr bp, compute address of next and previous blocks */
+#define NEXT_BLKP(bp)  ((char *)(bp) + GET_SIZE(((char *)(bp) - WSIZE)))
+#define PREV_BLKP(bp)  ((char *)(bp) - GET_SIZE(((char *)(bp) - DSIZE)))
 
 /* rounds up to the nearest multiple of ALIGNMENT */
 #define ALIGN(size) (((size) + (ALIGNMENT-1)) & ~0x7)
@@ -99,14 +122,16 @@ struct Node{
   NodePtr *back_link;
 };
 
-//#define FreeListRoot ((NodePtr*)mem_heap_lo())->forward_link 
-
 /* helper functions */
 void *find_fit(size_t size);
 void addBlock(NodePtr* p);
 void remove_block(NodePtr *p);
-
+void mm_checkheap(int verbose);
 void print_heap(); /* not mine, delete this function before handin */
+
+/* functions from the book */
+static void place(void *bp, size_t asize);
+static void *extend_heap(size_t words);
 
 /* 
  * mm_init - initialize the malloc package.
@@ -117,6 +142,14 @@ int mm_init(void)
     p->forward_link = p;
     p->back_link = p;
     p->size_alloc = NODE_PTR_SIZE; /* when coalesing this is important */
+
+    /* not sure */
+    //PUT(p, 0);                        /* alignment padding */
+    //PUT(p+WSIZE, PACK(OVERHEAD, 1));  /* prologue header */ 
+    //PUT(p+DSIZE, PACK(OVERHEAD, 1));  /* prologue footer */ 
+    //PUT(p+WSIZE+DSIZE, PACK(0, 1));   /* epilogue header */
+    /************/
+
     return 0;
 }
 
@@ -189,11 +222,19 @@ void *find_fit(size_t size){
 void mm_free(void *ptr){
     void* result = ptr - NODE_PTR_SIZE; /* substract the offset, see malloc return statement */
     NodePtr* p = result;
-    /* if coolesing check prior and next block if they are free */
-    addBlock(p);   
+    
+    /* not sure about this */
+    //size_t size = p->size_alloc & ~1; //get size of the block
+    //PUT(HDRP(p), PACK(size, 0));
+    //PUT(FTRP(p), PACK(size, 0));
+    /***********************/
+
+    addBlock(p);
+    /* TODO: coalesce(p)*/
 }  
 
-void addBlock(NodePtr* p){
+void addBlock(NodePtr* p){ 
+    /* TODO: split the blocks! */
     p->size_alloc = p->size_alloc & ~1; /* mark the block as freed */
     
     /* add the block */
@@ -212,3 +253,62 @@ void *mm_realloc(void *ptr, size_t size)
      return NULL;
 }
 
+
+/************************************** Given functions **********************************/
+/* 
+ * mm_checkheap - Check the heap for consistency 
+ */
+void mm_checkheap(int verbose) 
+{
+  /* TODO: implement */
+}
+
+/* 
+ * place - Place block of asize bytes at start of free block bp 
+ *         and split if remainder would be at least minimum block size
+ */
+/* $begin mmplace */
+/* $begin mmplace-proto */
+static void place(void *bp, size_t asize)
+/* $end mmplace-proto */
+{
+  size_t csize = GET_SIZE(HDRP(bp));   
+
+  if ((csize - asize) >= (DSIZE + OVERHEAD)) { 
+    PUT(HDRP(bp), PACK(asize, 1));
+    PUT(FTRP(bp), PACK(asize, 1));
+    bp = NEXT_BLKP(bp);
+    PUT(HDRP(bp), PACK(csize-asize, 0));
+    PUT(FTRP(bp), PACK(csize-asize, 0));
+  }
+  else { 
+    PUT(HDRP(bp), PACK(csize, 1));
+    PUT(FTRP(bp), PACK(csize, 1));
+  }
+}
+/* $end mmplace */
+
+/* 
+ * extend_heap - Extend heap with free block and return its block pointer
+ */
+/* $begin mmextendheap */
+static void *extend_heap(size_t words) 
+{
+  char *bp;
+  size_t size;
+        
+  /* Allocate an even number of words to maintain alignment */
+  size = (words % 2) ? (words+1) * WSIZE : words * WSIZE;
+  if ((bp = mem_sbrk(size)) == (void *)-1) 
+    return NULL;
+
+  /* Initialize free block header/footer and the epilogue header */
+  PUT(HDRP(bp), PACK(size, 0));         /* free block header */
+  PUT(FTRP(bp), PACK(size, 0));         /* free block footer */
+  PUT(HDRP(NEXT_BLKP(bp)), PACK(0, 1)); /* new epilogue header */
+
+  /* Coalesce if the previous block was free */
+  //return coalesce(bp);
+  return bp;
+}
+/* $end mmextendheap */
