@@ -99,10 +99,13 @@ struct Node{
   NodePtr *back_link;
 };
 
-#define FreeListRoot ((NodePtr*)mem_heap_lo())->forward_link 
+//#define FreeListRoot ((NodePtr*)mem_heap_lo())->forward_link 
 
 /* helper functions */
 void *find_fit(size_t size);
+void addBlock(NodePtr* p);
+void remove_block(NodePtr *p);
+
 void print_heap(); /* not mine, delete this function before handin */
 
 /* 
@@ -129,17 +132,15 @@ void *mm_malloc(size_t size)
     if(p == NULL){ /* not in a free list */
         p = mem_sbrk(newsize);
 	if (p == (void *)-1) //have no space
-	  return NULL;
+	    return NULL;
 	else {
-	  p->size_alloc = newsize | 1; /* set block size to new size as well as mark it as allocated */
-	  p->forward_link = NULL;
-	  p->back_link = NULL; 
+	    p->size_alloc = newsize | 1; /* set block size to new size as well as mark it as allocated */
+	    p->forward_link = NULL;
+	    p->back_link = NULL; 
 	}
     } else { //in a free list
-        p->size_alloc |= 1; /* mark this block as allocated */
-	/* remove the block from the list */
-	p->back_link->forward_link = p->forward_link;
-	p->forward_link->back_link = p->back_link; 
+        p->size_alloc = p->size_alloc | 1; /* mark this block as allocated */
+	remove_block(p);
     }
     
     void *result = (void *)((char *)p + NODE_PTR_SIZE);
@@ -163,35 +164,44 @@ void print_heap(){
 /****************************************************************/
 
 void remove_block(NodePtr *p){
-    //removes the specified block from the free list
+    /* remove the block from the list */  
     p->back_link->forward_link = p->forward_link;
     p->forward_link->back_link = p->back_link;
 } 
 
 void *find_fit(size_t size){
     NodePtr *ptr;
-    /*
-    for(ptr = ((NodePtr*)mem_heap_lo())->forward_link; ptr != mem_heap_lo() && ptr->size_alloc < size; ptr = ptr->forward_link);
-    if(ptr != mem_heap_lo()){
-      return ptr;
-    }
-    */
-    
+        
     /* ptr has to be less than mem_heap_lo() in order to make sure not to iterate in a circle */
+    NodePtr* FreeListRoot =  ((NodePtr*)mem_heap_lo())->forward_link; 
     for(ptr = FreeListRoot; ptr != mem_heap_lo(); ptr = ptr->forward_link){
-      if (ptr->size_alloc < size) {
-        return ptr; /* found appropriate block */
-      }
+       if (ptr->size_alloc >= size) {
+         return ptr; /* return approprite block */ 
+       }
     }
-   
+    
     return NULL; /* not found */ 
 }
 
 /*
  * mm_free - Freeing a block does nothing.
  */
-void mm_free(void *ptr)
-{
+void mm_free(void *ptr){
+    void* result = ptr - NODE_PTR_SIZE; /* substract the offset, see malloc return statement */
+    NodePtr* p = result;
+    /* if coolesing check prior and next block if they are free */
+    addBlock(p);   
+}  
+
+void addBlock(NodePtr* p){
+    p->size_alloc = p->size_alloc & ~1; /* mark the block as freed */
+    
+    /* add the block */
+    NodePtr* tmp = mem_heap_lo(); /* tmp points to the head of the free list*/
+    p->forward_link = tmp->forward_link;
+    p->back_link = tmp;
+    tmp->forward_link = p;
+    p->forward_link->back_link = p;
 }
 
 /*
@@ -201,3 +211,4 @@ void *mm_realloc(void *ptr, size_t size)
 {
      return NULL;
 }
+
