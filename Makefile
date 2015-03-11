@@ -1,4 +1,4 @@
-#
+#A
 # Students' Makefile for the Malloc Lab
 #
 TEAM = $(shell egrep '^ *\* *Group:' mm.c | sed -e 's/\*//g' -e 's/ *Group: *//g' | sed 's/ *\([^ ].*\) *$$/\1/g')
@@ -19,7 +19,7 @@ VERSION = 1
 HANDINDIR = /labs/sty15/.handin/malloclab
 
 CC = gcc
-CFLAGS = -Wall -O2 -m32
+CFLAGS = -Wall -ggdb3 -m32
 
 OBJS = mdriver.o mm.o memlib.o fsecs.o fcyc.o clock.o ftimer.o
 
