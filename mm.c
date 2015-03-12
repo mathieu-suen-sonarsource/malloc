@@ -51,8 +51,8 @@
  * the fact that earlier described method was very error prone. Every time we were updating the sizes                         
  * in headers and footers we had to update the size in struct as well. Consequently, we faced a lots                          
  * of bugs and lots of unexpected behaviour. Addinionally, current method uses less space, because we                         
- * no longer deen to store the 3rd size variable in each block. Therefore the final heap struture is as follows               
- *                                                                                                                            
+ * no longer need to store the 3rd size variable in each block. Therefore the final heap struture is as follows               
+ * Initial heap size: 24 bytes                                                                                                                           
  * ++++++++++++++++++++++++++++++++++++++++++++++                                                                             
  * |0|PH|PF|H|   |F|H|       |F|H|         |F|EH|                                                                             
  * ++++++++++++++++++++++++++++++++++++++++++++++                                                                             
@@ -63,7 +63,8 @@
  * H = header                                                                                                                 
  * F = footer                                                                                                                 
  * E = epilogue                                                                                                               
- * 0 = padding                                                                                                                 * PH = prologue header                                                                                                       
+ * 0 = padding  
+ * PH = prologue header                                                                                                       
  * PF = prologue footer                                                                                                       
  */
 #include <stdio.h>
@@ -81,11 +82,11 @@
 * struct that follows.
 *
 * === User information ===
-* Group: 
-* User 1: 
-* SSN: X
-* User 2: 
-* SSN: X
+* Group: DovyTelma
+* User 1: dovydas13
+* SSN: 100694-4179
+* User 2: telma13
+* SSN: 120492-2099
 * === End User Information ===
 ********************************************************/
 team_t team = {
@@ -102,8 +103,9 @@ team_t team = {
   /* Leave blank */
   "",
   /* Leave blank */
-     ""
+  ""
 };
+
 
 /* $begin mallocmacros */
 /* Basic constants and macros */
