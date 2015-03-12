@@ -188,6 +188,10 @@ void *mm_malloc(size_t size)
 } 
 /* $end mmmalloc */
 
+/* 
+ * mm_free - Free a block 
+ */
+<<<<<<< HEAD:mm.c
 /* $begin mmfree */
 void mm_free(void *bp)
 {
@@ -244,6 +248,7 @@ static void remove_block(void *p){
 /*
  * mm_realloc - naive implementation of mm_realloc
  */
+
 void *mm_realloc(void *ptr, size_t size)
 {  
     void *newp;
@@ -261,6 +266,34 @@ void *mm_realloc(void *ptr, size_t size)
     return newp;
 }
 
+
+/* 
+ * mm_checkheap - Check the heap for consistency 
+ */
+void mm_checkheap(int verbose) 
+{
+    char *bp = heap_listp;
+
+    if (verbose)
+        printf("Heap (%p):\n", heap_listp);
+
+    if ((GET_SIZE(HDRP(heap_listp)) != DSIZE) || !GET_ALLOC(HDRP(heap_listp)))
+        printf("Bad prologue header\n");
+    checkblock(heap_listp);
+
+    for (bp = heap_listp; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp)) {
+        if (verbose) 
+            printblock(bp);
+        checkblock(bp);
+    }
+     
+    if (verbose)
+        printblock(bp);
+    if ((GET_SIZE(HDRP(bp)) != 0) || !(GET_ALLOC(HDRP(bp))))
+        printf("Bad epilogue header\n");
+}
+
+/* The remaining routines are internal helper routines */
 
 /* 
  * extend_heap - Extend heap with free block and return its block pointer
@@ -285,12 +318,16 @@ static void *extend_heap(size_t words)
 }
 /* $end mmextendheap */
 
+
+/************************************** Given functions **********************************/
 /* 
  * place - Place block of asize bytes at start of free block bp 
  *         and split if remainder would be at least minimum block size
  */
 /* $begin mmplace */
+/* $begin mmplace-proto */
 static void place(void *bp, size_t asize)
+/* $end mmplace-proto */
 {
     size_t csize = GET_SIZE(HDRP(bp));   
 
@@ -397,6 +434,11 @@ static void printblock(void *bp)
            fsize, (falloc ? 'a' : 'f')); 
 
 }
+/* $end mmextendheap */
+
+/*
+ * coalesce - boundary tag coalescing. Return ptr to coalesced block
+ */
 
 void mm_checkheap(int verbose) 
 {
