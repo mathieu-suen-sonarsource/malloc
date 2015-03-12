@@ -1,4 +1,0 @@
-for(ptr = ((NodePtr*)mem_heap_lo())->forward_link; ptr != mem_heap_lo() && ptr->size_alloc < size; ptr = ptr->forward_link);
-    if(ptr != mem_heap_lo()){
-      return ptr;
-}

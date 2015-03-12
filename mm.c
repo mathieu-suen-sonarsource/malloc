@@ -1,59 +1,93 @@
-/*
- * This project will address malloclab with explicit free lists implentation.
- * Initially:
- * In our init function we initilize the heap by creating the epilouge header
- * which marks the end of the heap. In addition, we create prologue header
- * and footer which describes the size of the block.
- * The first step in allocating memory with mm_malloc is to initilize the
- * FreeListRoot to null, which will mark the beginning of our explicit free list.
- * For starters we initilize the heap with 16 bytes(which includes, earlier mentioned,
- * prologue header and footer as well as epilouge header). We want to preserver this heap
- * size until we are asked for more memory.
- *
- * Memory Allocation:
- * When allocating memory first we want to check if freeListRoot is pointing to null,
- * if so(heap is full), we want to extand the heap by max(of chuncksize or requested size).
- * After extention we move the epilouge header to the end of the heap
- * (new sbrk pointer, in other words, shift epilouge header by extended size). Addionally,
- * it is important to add the header and footer to the new free block as well as link prev
- * and next pointer into the linked list (note that after the heap expension, we will overwrite the
- * old epilogue with header ). When creating the first free block we set the prev
- * and next pointer to null, as there are no other free blocks in that list.
- * Finally we want to set the freeListRoot pointing to the new first free block.
- * Note: as we are adding/freeing more blocks we will be linking them together via prev and next pointers.
- *
- * Realloc:
- * Realloc will take a pointer to the beginning to the block we want to allocate, as well as the new size.
- * In case we want to expande the block, first we will check neighbors(left and right blocks) and if left
- * or right block is free and if size of current block plus the size of the free left or right neighbor
- * is less then or equal to the new size we simply expand the block into the free neighbor (Coalesce).
- * Otherwise, we free the current block and iterate through our explicit free list and look for a space
- * that could satisfy "newsize", if no such space, expand heap.
- * In case we want to shrink the block, first we will check the neighbor blocks, if they are free, we will combine
- * remaining space with left or right block (Coalesce). In case the left and right block are both allocated,
- * we will iterate through the free list and allocate the smallest block within the explicit free list 
- * that satisfies newize
- *
- * Heap Checker:
- * In order to avoid possible errors in our malloc implentation we are going to create a heap checker.
- * In our heap checker implentation we are going to check if our Explicit free list is linked in a
- * circle. We will check by creating two pointers(fast pointer and a turtle pointer) which will simply
- * iterate through the doubly linked list (both directions) and we will check if fast pointer equals
- * the turtle pointer. If so we can conclude that the list contains a circle,
- * which we want to avoid at all cost, beacuse they would create an infinite loop. Finally we want
- * to count number of free blocks on the heap and compare it to number of blocks in our Explicit
- * free list, in order to be aware of the possible unutilized memory.
+/*                                                                                                                            
+ * This project will address malloclab with explicit free lists implentation.                                                 
+ * Initially:                                                                                                                 
+ * In our init function we initilize the heap by creating the epilouge header                                                 
+ * which marks the end of the heap. In addition, we create prologue header                                                    
+ * and footer which describes the size of the block.                                                                          
+ * The first step in allocating memory with mm_malloc is to initilize the                                                     
+ * FreeListRoot to null, which will mark the beginning of our explicit free list.                                             
+ * For starters we initilize the heap with 16 bytes(which includes, earlier mentioned,                                        
+ * prologue header and footer as well as epilouge header). We want to preserver this heap                                     
+ * size until we are asked for more memory.                                                                                   
+ *                                                                                                                            
+ * Memory Allocation:                                                                                                         
+ * When allocating memory first we want to check if freeListRoot is pointing to null,                                         
+ * if so(heap is full), we want to extand the heap by max(of chuncksize or requested size).                                   
+ * After extention we move the epilouge header to the end of the heap                                                         
+ * (new sbrk pointer, in other words, shift epilouge header by extended size). Addionally,                                    
+ * it is important to add the header and footer to the new free block as well as link prev                                    
+ * and next pointer into the linked list (note that after the heap expension, we will overwrite the                           
+ * old epilogue with header ). When creating the first free block we set the prev                                             
+ * and next pointer to null, as there are no other free blocks in that list.                                                  
+ * Finally we want to set the freeListRoot pointing to the new first free block.                                              
+ * Note: as we are adding/freeing more blocks we will be linking them together via prev and next pointers.                    
+ *                                                                                                                            
+ * Realloc:                                                                                                                   
+ * Realloc will take a pointer to the beginning to the block we want to allocate, as well as the new size.                    
+ * In case we want to expande the block, first we will check neighbors(left and right blocks) and if left                     
+ * or right block is free and if size of current block plus the size of the free left or right neighbor                       
+ * is less then or equal to the new size we simply expand the block into the free neighbor (Coalesce).                        
+ * Otherwise, we free the current block and iterate through our explicit free list and look for a space                       
+ * that could satisfy "newsize", if no such space, expand heap.                                                               
+ * In case we want to shrink the block, first we will check the neighbor blocks, if they are free, we will combine            
+ * remaining space with left or right block (Coalesce). In case the left and right block are both allocated,                  
+ * we will iterate through the free list and allocate the smallest block within the explicit free list                        
+ * that satisfies newize                                                                                                      
+ *                                                                                                                            
+ * Heap Checker:                                                                                                              
+ * In order to avoid possible errors in our malloc implentation we are going to create a heap checker. 
+ * In our heap checker implentation we are going to check if our Explicit free list is linked in a                            
+ * circle. We will check by creating two pointers(fast pointer and a turtle pointer) which will simply                        
+ * iterate through the doubly linked list (both directions) and we will check if fast pointer equals                          
+ * the turtle pointer. If so we can conclude that the list contains a circle,                                                 
+ * which we want to avoid at all cost, beacuse they would create an infinite loop. Finally we want                            
+ * to count number of free blocks on the heap and compare it to number of blocks in our Explicit                              
+ * free list, in order to be aware of the possible unutilized memory.                                                         
+ *                                                                                                                            
+ * Important note:                                                                                                            
+ * After trying to implement the described version, we realized that there is no need to use struct                           
+ * for storing the size, previous and back pointers. Instead, we decided to store the size inside                             
+ * the headers and footers only. The main reason why we decided to skip using struct was due to                               
+ * the fact that earlier described method was very error prone. Every time we were updating the sizes                         
+ * in headers and footers we had to update the size in struct as well. Consequently, we faced a lots                          
+ * of bugs and lots of unexpected behaviour. Addinionally, current method uses less space, because we                         
+ * no longer deen to store the 3rd size variable in each block. Therefore the final heap struture is as follows               
+ *                                                                                                                            
+ * ++++++++++++++++++++++++++++++++++++++++++++++                                                                             
+ * |0|PH|PF|H|   |F|H|       |F|H|         |F|EH|                                                                             
+ * ++++++++++++++++++++++++++++++++++++++++++++++                                                                             
+ *          ^_________||             ^                                                                                        
+ *                     |_____________|                                                                                        
+ *                                                                                                                            
+ * Back_link/Forward_link                                                                                                     
+ * H = header                                                                                                                 
+ * F = footer                                                                                                                 
+ * E = epilogue                                                                                                               
+ * 0 = padding                                                                                                                 * PH = prologue header                                                                                                       
+ * PF = prologue footer                                                                                                       
  */
-
 #include <stdio.h>
+#include <stdlib.h>
+#include <assert.h>
 #include <unistd.h>
 #include <string.h>
-#include <stdlib.h>
+ 
 #include "mm.h"
 #include "memlib.h"
-#include <assert.h>
 
-/* Team structure */
+/*********************************************************
+* NOTE TO STUDENTS: Before you do anything else, please
+* provide your team information in below _AND_ in the
+* struct that follows.
+*
+* === User information ===
+* Group: 
+* User 1: 
+* SSN: X
+* User 2: 
+* SSN: X
+* === End User Information ===
+********************************************************/
 team_t team = {
   /* Group name */
   "DovyTelma",
@@ -68,7 +102,7 @@ team_t team = {
   /* Leave blank */
   "",
   /* Leave blank */
-  ""
+     ""
 };
 
 /* $begin mallocmacros */
@@ -123,10 +157,11 @@ static void checkblock(void *bp);
 static void put_on_heap(void *bp, size_t size, int bool);
 static void remove_block(void *p);
 static void add_block(void *p);
+void print_free(); //helper funcitons
+void print_heap();
 /* 
  * mm_init - Initialize the memory manager 
  */
-
 /* $begin mminit */
 int mm_init(void) 
 {
@@ -167,7 +202,8 @@ void *mm_malloc(size_t size)
     /* Ignore spurious requests */
     if (size <= 0)
         return NULL;
-     
+
+    /*Adjusting block size*/
     if((ALIGN(size) + DSIZE) < HEAP_SIZE)
         asize = HEAP_SIZE;
     else
@@ -188,6 +224,9 @@ void *mm_malloc(size_t size)
 } 
 /* $end mmmalloc */
 
+/*
+ * Free a block 
+ */
 /* $begin mmfree */
 void mm_free(void *bp)
 {
@@ -195,10 +234,12 @@ void mm_free(void *bp)
     put_on_heap(bp, size, 0);
     coalesce(bp);
 }
-
 /* $end mmfree */
 
-/*using FIFO, always adding free block to the root of the list*/
+/*
+ *Adding block to free list  using FIFO, always adding free block to the root of the list
+*/
+/*$begin addblock*/
 static void add_block(void *p){
 
    void *head = (void*)FreeListRoot;
@@ -215,7 +256,12 @@ static void add_block(void *p){
     FreeListRoot = p;
    }
 }
+/*$end addblock*/
 
+/*
+ * Removes the block from the free list
+ */
+/*$begin removeblock*/
 static void remove_block(void *p){
   
   /*temp variables for accessing backlinks and forward links*/
@@ -239,28 +285,62 @@ static void remove_block(void *p){
   }
     
 } 
-
+/*$end removeblock*/
 
 /*
  * mm_realloc - naive implementation of mm_realloc
  */
+/*$begin mmrealloc*/
 void *mm_realloc(void *ptr, size_t size)
 {  
     void *newp;
     size_t copySize;
-
-    if ((newp = mm_malloc(size)) == NULL) {
-        printf("ERROR: mm_malloc failed in mm_realloc\n");
-        exit(1);
+    
+    if(size == 0){
+      mm_free(ptr);
+      return NULL;
     }
     copySize = GET_SIZE(HDRP(ptr));
+
+    /*tried to implement realloc by checking right block*/
+    /* void *tempNext = NEXT_BLKP(ptr);
+    size_t tempSize = GET_SIZE(HDRP(tempNext));
+    
+    size_t tmp = tempSize + copySize;
+
+    if(GET_ALLOC(HDRP(tempNext)) == 0 && (tmp >= (size + DSIZE))){
+      //remove_block(tempNext);
+      //put_on_heap(ptr, tmp-size-DSIZE, 1);
+      
+      if((tmp - (size+DSIZE)) > DSIZE){
+	
+	put_on_heap(ptr, size + DSIZE, 1);
+	void *newPtr = NEXT_BLKP(ptr);
+	put_on_heap(newPtr, tmp - (size + DSIZE), 0);
+	remove_block(tempNext);
+	//add_block(tempNext);
+	coalesce(newPtr);
+      }
+      else{
+	put_on_heap(ptr, tmp, 1);
+	remove_block(tempNext);
+	}
+    
+      return ptr;
+      }*/
+
+    if ((newp = mm_malloc(size)) == NULL) {
+      printf("ERROR: mm_malloc failed in mm_realloc\n");
+      exit(1);
+    }
+
     if (size < copySize)
         copySize = size;
     memcpy(newp, ptr, copySize);
     mm_free(ptr);
     return newp;
 }
-
+/*$end mmrealloc*/
 
 /* 
  * extend_heap - Extend heap with free block and return its block pointer
@@ -294,7 +374,7 @@ static void place(void *bp, size_t asize)
 {
     size_t csize = GET_SIZE(HDRP(bp));   
 
-    if ((csize - asize) >= (24)) { 
+    if ((csize - asize) >= (HEAP_SIZE)) { 
         put_on_heap(bp, asize, 1);
         remove_block(bp);
 	bp = NEXT_BLKP(bp);
@@ -311,22 +391,25 @@ static void place(void *bp, size_t asize)
 /* 
  * find_fit - Find a fit for a block with asize bytes 
  */
+/*$begin findfit*/
 static void *find_fit(size_t asize)
 {
     /* first fit search */
     void *bp;
 
     for (bp = FreeListRoot; GET_ALLOC(HDRP(bp)) == 0; bp = FORWARD_LINK(bp)) {
-      if ((size_t)GET_SIZE(HDRP(bp)) >= asize){
+      if (GET_SIZE(HDRP(bp)) >= asize){
             return bp;
         }
     }
     return NULL; /* no fit */
 }
+/*$end findfit*/
 
 /*
  * coalesce - boundary tag coalescing. Return ptr to coalesced block
  */
+/*$begin coalesce*/
 static void *coalesce(void *bp) 
 {
   void *prevBlock = PREV_BLKP(bp);
@@ -340,14 +423,14 @@ static void *coalesce(void *bp)
   size_t size = GET_SIZE(HDRP(bp));
   int flag = 0; //checking if we need to move the pointer we return, to the left (if we extend to the left, as is in Case 2 and Case 3) 
   
-  if (prev_alloc && !next_alloc)                /* Case 1 */
+  if (prev_alloc && !next_alloc)                /* Case 1, coalescing with next block  */
   {
       size += GET_SIZE(HDRP(NEXT_BLKP(bp)));
       remove_block(NEXT_BLKP(bp));
       put_on_heap(bp, size, 0);
   }
 
-  else if (!prev_alloc && next_alloc)           /* Case 2 */
+  else if (!prev_alloc && next_alloc)           /* Case 2, coalesing with prev block*/
   {
       flag = 1;
       size += GET_SIZE(HDRP(PREV_BLKP(bp)));     
@@ -355,7 +438,7 @@ static void *coalesce(void *bp)
       remove_block(PREV_BLKP(bp));
   }
 
-  else if (!prev_alloc && !next_alloc)         /* Case 3 */
+  else if (!prev_alloc && !next_alloc)         /* Case 3, coalesing with both prev and next block*/
   {
       flag = 1;
       size += GET_SIZE(HDRP(PREV_BLKP(bp))) + GET_SIZE(HDRP(NEXT_BLKP(bp)));
@@ -363,7 +446,7 @@ static void *coalesce(void *bp)
       remove_block(NEXT_BLKP(bp));
       put_on_heap(PREV_BLKP(bp), size, 0);
   }
-  if(flag){
+  if(flag){ //if coalesed with prev block, return prevblock pointer
     bp = PREV_BLKP(bp);
     add_block(bp);
     return bp;
@@ -371,13 +454,22 @@ static void *coalesce(void *bp)
   add_block(bp);
   return bp;
 }
+/*$end coalesce*/
 
+/*
+ * Putting header and footer onto the heap, used for reducing code repetition
+ */
+/*$begin putonheap*/
 static void put_on_heap(void *bp, size_t size, int bool){
   PUT(HDRP(bp), PACK(size, bool));
   PUT(FTRP(bp), PACK(size, bool));
 }
+/*$end putonheap*/
 
-
+/*
+ * Print Block, from textbook
+ */
+/*$begin printblock*/
 static void printblock(void *bp) 
 {
     size_t hsize, halloc, fsize, falloc;
@@ -397,7 +489,41 @@ static void printblock(void *bp)
            fsize, (falloc ? 'a' : 'f')); 
 
 }
+/*$end printblock*/
 
+/*
+ * helper function for printing the entire free list
+ */
+/*$begin printfree*/
+void print_free(){
+  void *p;
+  if(FreeListRoot == NULL){
+    printf("nothing in the freeList");
+  }else{
+    for(p = FreeListRoot; p != mem_heap_lo() && p != NULL; p = FORWARD_LINK(p)){
+      printf("block at %p, size %d\n",p , (int)GET_SIZE(HDRP(p)));
+    }
+  }
+}
+/*$end printfree*/
+
+/*
+ * helper function for printing the entire heap out.
+*/
+/*$begin printheap*/ 
+void print_heap(){
+  void *p = heap_listp;
+  while(p < mem_heap_hi()){
+    printf("%s block at %p, size %d\n", GET_ALLOC(HDRP(p)) ? "allocated":"free", p, GET_SIZE(HDRP(p)));
+    p = NEXT_BLKP(p); 
+  } 
+}
+/*$end printheap*/
+
+/*
+ * Heap checker, from textbook
+ */
+/*$begin mmcheckheap*/
 void mm_checkheap(int verbose) 
 {
   char *bp = heap_listp;
@@ -420,7 +546,12 @@ void mm_checkheap(int verbose)
   if ((GET_SIZE(HDRP(bp)) != 0) || !(GET_ALLOC(HDRP(bp))))
     printf("Bad epilogue header\n");
 }
+/*$end mmcheckheap*/
 
+/*
+ * Check Block, from textbook
+ */
+/*$begin checkblock*/
 static void checkblock(void *bp) 
 {
   if ((size_t)bp % 8)
@@ -428,4 +559,4 @@ static void checkblock(void *bp)
   if (GET(HDRP(bp)) != GET(FTRP(bp)))
     printf("Error: header does not match footer\n");
 }
-
+/*$end checkblock*/
