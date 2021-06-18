@@ -18,10 +18,10 @@ jobs:
       - name: Download and install the build wrapper
         run: |
           mkdir $HOME/.sonar
-          curl -sSLo $HOME/.sonar/build-wrapper-macosx-x86.zip ${ secrets.SONAR_HOST_URL }/static/cpp/build-wrapper-macosx-x86.zip
+          curl -sSLo $HOME/.sonar/build-wrapper-macosx-x86.zip ${{ secrets.SONAR_HOST_URL }}/static/cpp/build-wrapper-macosx-x86.zip
           unzip -o $HOME/.sonar/build-wrapper-macosx-x86.zip -d $HOME/.sonar/
         env:
-          SONAR_HOST_URL: ${ secrets.SONAR_HOST_URL }
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
       - name: Download and install the SonarScanner
         run: |
@@ -34,5 +34,5 @@ jobs:
           $HOME/.sonar/build-wrapper-macosx-x86/build-wrapper-macosx-x86 --out-dir bw-output make clean mdriver
           $HOME/.sonar/sonar-scanner-4.6.2.2472-macosx/bin/sonar-scanner -Dsonar.cfamily.build-wrapper-output=bw-output
         env:
-          SONAR_TOKEN: ${ secrets.SONAR_TOKEN }
-          SONAR_HOST_URL: ${ secrets.SONAR_HOST_URL }
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
