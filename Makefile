@@ -21,7 +21,7 @@ HANDINDIR = /labs/sty15/.handin/malloclab
 CC = gcc
 CFLAGS = -Wall -O2 -m32
 
-OBJS = mdriver.o mm.o memlib.o fsecs.o fcyc.o clock.o ftimer.o
+OBJS = mdriver.o
 
 mdriver: $(OBJS)
 	$(CC) $(CFLAGS) -o mdriver $(OBJS)
