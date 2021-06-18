@@ -18,7 +18,7 @@ node {
       powershell '''
         $env:Path += ";$HOME/.sonar/build-wrapper-win-x86"
         ls
-        build-wrapper-win-x86-64 --out-dir bw-output ls
+        build-wrapper-win-x86-64 --out-dir bw-output make mdriver
       '''
     }
     stage('SonarQube Analysis') {
