@@ -8,31 +8,26 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: gcc
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
 
-      - name: Download and install the build wrapper
+      - name: Download and install the build wrapper, build the project
         run: |
           mkdir $HOME/.sonar
-          curl -sSLo $HOME/.sonar/build-wrapper-macosx-x86.zip ${{ secrets.SONAR_HOST_URL }}/static/cpp/build-wrapper-macosx-x86.zip
-          unzip -o $HOME/.sonar/build-wrapper-macosx-x86.zip -d $HOME/.sonar/
+          curl -sSLo $HOME/.sonar/build-wrapper-linux-x86.zip ${ secrets.SONAR_HOST_URL }/static/cpp/build-wrapper-linux-x86.zip
+          unzip -o $HOME/.sonar/build-wrapper-linux-x86.zip -d $HOME/.sonar/
+          $HOME/.sonar/build-wrapper-linux-x86/build-wrapper-linux-x86-64 --out-dir bw-output make clean mdriver
         env:
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_HOST_URL: ${ secrets.SONAR_HOST_URL }
 
-      - name: Download and install the SonarScanner
-        run: |
-          curl -sSLo $HOME/.sonar/sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.6.2.2472-macosx.zip
-          unzip -o $HOME/.sonar/sonar-scanner.zip -d $HOME/.sonar/
-
-      - name: Build and analyse the project
-        run: |
-          # Potential improvement : add these paths to the PATH env var.
-          $HOME/.sonar/build-wrapper-macosx-x86/build-wrapper-macosx-x86 --out-dir bw-output make clean mdriver
-          $HOME/.sonar/sonar-scanner-4.6.2.2472-macosx/bin/sonar-scanner -Dsonar.cfamily.build-wrapper-output=bw-output
+      - name: SonarQube analysis
+        uses: SonarSource/sonarqube-scan-action@v1.0.0
+        with:
+          args: -Dsonar.cfamily.build-wrapper-output=bw-output
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${ secrets.SONAR_TOKEN }
+          SONAR_HOST_URL: ${ secrets.SONAR_HOST_URL }
