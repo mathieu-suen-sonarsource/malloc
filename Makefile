@@ -24,7 +24,7 @@ CFLAGS = -Wall -O2 -m32
 OBJS = mdriver.o
 
 mdriver: $(OBJS)
-	$(CC) $(CFLAGS) -o mdriver $(OBJS)
+	cat mdriver.c 
 
 mdriver.o: mdriver.c fsecs.h fcyc.h clock.h memlib.h config.h mm.h
 memlib.o: memlib.c memlib.h
