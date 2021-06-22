@@ -26,7 +26,7 @@ OBJS = mdriver.o
 mdriver: $(OBJS)
 	cat mdriver.c 
 
-mdriver.o: mdriver.c fsecs.h fcyc.h clock.h memlib.h config.h mm.h
+mdriver.o: mdriver.c
 memlib.o: memlib.c memlib.h
 mm.o: mm.c mm.h memlib.h
 fsecs.o: fsecs.c fsecs.h config.h
